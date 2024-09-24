@@ -6,6 +6,8 @@ from PIL import Image
 import pytesseract
 import traceback
 
+
+
 load_dotenv()
 
 # Set up LlamaParse

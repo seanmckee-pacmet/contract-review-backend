@@ -1,4 +1,5 @@
 import os
+import tempfile
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import tiktoken
@@ -6,8 +7,9 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import OpenAIEmbeddings
 import uuid
 
-from fastapi import APIRouter
-from src.supabase import get_companies, add_company as supabase_add_company, delete_company as supabase_delete_company
+from fastapi import APIRouter, UploadFile
+from src.document_processing import chunk_markdown_text, determine_document_type
+from src.get_formatted_text import parse_document
 router = APIRouter()
 
 
@@ -54,8 +56,28 @@ async def delete_document(document_id: int):
 # Chunks: id, document_id, content, embedding
 # Documents: id, doc_type, company_id, name
 @router.post("/upload/{company_id}")
-async def upload_document(company_id: int, file: str):
-    return {"message": "Document uploaded successfully", "file": file}
+async def upload_document(company_id: str, file: UploadFile):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create the file path
+        file_path = os.path.join(temp_dir, file.filename)
+        
+        # Save the file
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+
+        print("file_path: ", file_path)
+        
+        # Move these operations inside the tempfile context
+        content = parse_document(file_path)
+        print("content: ", content)
+        doc_type = determine_document_type(content)
+        print("doc_type: ", doc_type)
+        chunks = chunk_markdown_text(content)
+        print("chunks: ", chunks)
+    # Return statement can be outside the context manager
+    return {"number_of_chunks": len(chunks), "first_chunk": chunks[0]}
+
 
 # list documents
 @router.get("/documents/{company_id}")
@@ -63,7 +85,7 @@ async def list_documents(company_id: int):
     return {"documents": ["doc1.pdf", "doc2.pdf", "doc3.pdf"]}  # Placeholder
 
 
-# 
+
 
 
 
