@@ -1,7 +1,22 @@
+import os
+from supabase import create_client, Client
+from dotenv import load_dotenv
+import tiktoken
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.embeddings import OpenAIEmbeddings
+import uuid
+
 from fastapi import APIRouter
 from src.supabase import get_companies, add_company as supabase_add_company, delete_company as supabase_delete_company
 router = APIRouter()
 
+
+load_dotenv()
+
+url = os.environ.get("SUPABASE_URL")
+key = os.environ.get("SUPABASE_KEY")
+
+supabase: Client = create_client(url, key)
 
 # CRUD for managing documents and companies
 
@@ -11,19 +26,19 @@ router = APIRouter()
 # get companies
 @router.get("/companies")
 async def list_companies():
-    return get_companies()
+    return supabase.table("Companies").select("*").execute()
 
 # add company
 @router.post("/company")
 async def add_company(company_name: str):
-    result = supabase_add_company(company_name)
-    return {"message": "Company added successfully", "company_name": company_name, "result": result}
+    supabase.table("Companies").insert({"name": company_name}).execute()
+    return {"message": "Company added successfully", "company_name": company_name}
 
 # delete company
 @router.delete("/company/{company_id}")
 async def delete_company(company_id: str):
-    result = supabase_delete_company(company_id)
-    return {"message": "Company deleted successfully", "company_id": company_id, "result": result}
+    supabase.table("Companies").delete().eq("id", company_id).execute()
+    return {"message": "Company deleted successfully", "company_id": company_id}
 
 
 # DOCUMENT ROUTES
