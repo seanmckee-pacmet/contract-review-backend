@@ -9,3 +9,7 @@ async def submit_review(document_id: str, review_text: str):
 @router.get("/reviews/{document_id}")
 async def get_reviews(document_id: str):
     return {"document_id": document_id, "reviews": ["Review 1", "Review 2"]}  # Placeholder
+
+
+
+# 

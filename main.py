@@ -4,6 +4,8 @@ from api.routes.analysis import router as analysis_router
 from api.routes.document import router as document_router
 from api.routes.review import router as review_router
 from api.routes.chat import router as chat_router
+from api.routes.review_criteria import router as review_criteria_router
+
 app = FastAPI()
 
 # Configure CORS
@@ -20,6 +22,7 @@ app.include_router(analysis_router, prefix="/analysis", tags=["Analysis"])
 app.include_router(document_router, prefix="/documents", tags=["Documents"])
 app.include_router(review_router, prefix="/reviews", tags=["Reviews"])
 app.include_router(chat_router, prefix="/chat", tags=["Chat"])
+app.include_router(review_criteria_router, prefix="/review_criteria", tags=["Review Criteria"])
 
 @app.get("/")
 async def root():
