@@ -127,6 +127,12 @@ async def list_documents(company_id: str):
     return supabase.table("Documents").select("*").eq("company_id", company_id).execute()
 
 
+# get document chunks with headers
+@router.get("/{document_id}/chunks")
+async def get_document_chunks(document_id: str):
+    return supabase.table("Chunks").select("*").eq("document_id", document_id).execute()
+
+
 
 
 
