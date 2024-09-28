@@ -16,8 +16,8 @@ class POAnalysisResponse(BaseModel):
 def review_po(content: str) -> POAnalysisResponse:
     prompt = f"""
     Analyse this purchase order carefully and determine the following:
-             1. If the entire quality document is invoked in this purchase order.
-             2. If not, identify specific clause identifiers for the quality document that are invoked.
+             1. If the entire quality document is invoked in this purchase order. (are there specific clauses specified? or is it a blanket PO?)
+             2. If not, identify specific clause identifiers for the quality document that are invoked. If from the last step 
              3. Any other requirements noted on the purchase order.
 
              Correct any OCR errors in clause identifiers as previously instructed.
@@ -71,5 +71,5 @@ def review_po(content: str) -> POAnalysisResponse:
         ],
         response_format=POAnalysisResponse
     )
-
     return response.choices[0].message.parsed
+

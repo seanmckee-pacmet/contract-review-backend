@@ -51,7 +51,9 @@ def determine_document_type(content: str) -> str:
     prompt = f"""
     Analyze the following text and determine if it is a Purchase Order, Quality Document, or Terms and Conditions.
     Respond with only one of these three options or "Unknown" if you can't determine.
-    
+    If Purchase Order, respond with "PO".
+    If Quality Document, respond with "QD".
+    If Terms and Conditions, respond with "TC".
     Text sample:
     {content[:2000]}  # Using the first 2000 characters as a sample
     """
