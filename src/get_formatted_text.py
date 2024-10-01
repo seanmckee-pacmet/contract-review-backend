@@ -13,8 +13,11 @@ load_dotenv()
 # Set up LlamaParse
 parser = LlamaParse(
     result_type="markdown",
+    parsing_instruction="You are a helpful assistant that converts PDF documents to markdown. Focus on finding the correct overarching heading for each section.",
     api_key=os.getenv("LLAMA_CLOUD_API_KEY"),
-    model="gpt-4o-2024-08-06"
+    use_vendor_multimodal_parser=True,
+    vendor_multimodal_parser_model="gpt-4o-2024-08-06",
+    vendor_multimodal_api_key=os.getenv("OPENAI_API_KEY"),
 )
 
 def parse_pdf_to_markdown(pdf_path):
@@ -37,6 +40,7 @@ def parse_pdf_to_markdown(pdf_path):
                     markdown_content.append(doc.page_content)
                 else:
                     print(f"Warning: Document doesn't have 'text' or 'page_content' attribute: {doc}")
+                    print("document: ", doc)
             return "\n\n".join(markdown_content)
         else:
             print(f"No documents were parsed from {pdf_path}")
