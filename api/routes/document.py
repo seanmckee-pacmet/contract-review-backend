@@ -76,39 +76,18 @@ async def upload_document(company_id: str, file: UploadFile = File(...)):
     print(f"Temporary file created at: {temp_file_path}")
 
     try:
-        # Extract text based on file type
-        file_extension = os.path.splitext(file.filename)[1].lower()
-        
-        if file_extension == '.pdf':
-            print("Extracting text from PDF")
-            with open(temp_file_path, 'rb') as pdf_file:
-                pdf_reader = PyPDF2.PdfReader(pdf_file)
-                text = ""
-                for page in pdf_reader.pages:
-                    text += page.extract_text() + "\n"
-        elif file_extension in ['.tiff', '.tif', '.png', '.jpg', '.jpeg']:
-            print("Extracting text from image using OCR")
-            pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\smckee\\AppData\\Local\\Programs\\Tesseract-OCR\\tesseract.exe'
-            with Image.open(temp_file_path) as img:
-                text = ""
-                for i in range(getattr(img, 'n_frames', 1)):
-                    img.seek(i)
-                    text += pytesseract.image_to_string(img) + "\n"
-        else:
-            print(f"Unsupported file type: {file_extension}")
-            return {"error": f"Unsupported file type: {file_extension}"}
+        # Parse document to get markdown text
+        markdown_content = parse_document(temp_file_path)
+        print("Document parsed and converted to markdown")
 
         # Determine document type
-        doc_type = determine_document_type(text[:2000])
+        doc_type = determine_document_type(markdown_content[:2000])
         print(f"Determined document type: {doc_type}")
 
-        if doc_type in ['QD', 'TC', 'PO']:
-            print(f"Processing {doc_type} document")
-            markdown_content = text
-        else:
+        if doc_type not in ['QD', 'TC', 'PO']:
             print(f"Unsupported document type: {doc_type}")
             return {"error": f"Unsupported document type: {doc_type}"}
-
+        
         print("Chunking and embedding content")
         chunks = chunk_markdown_text(markdown_content)
         print(f"Created {len(chunks)} chunks")
