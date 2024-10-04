@@ -56,7 +56,6 @@ def parse_tiff_to_markdown(tiff_path):
     if not os.path.exists(tiff_path):
         raise FileNotFoundError(f"The file {tiff_path} does not exist.")
     
-    pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
     full_text = ""
     with Image.open(tiff_path) as img:
         for i in range(img.n_frames):

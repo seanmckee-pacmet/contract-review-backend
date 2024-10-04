@@ -158,7 +158,6 @@ async def upload_purchase_order(document_id: str, file: UploadFile = File(...)):
         temp_file_path = temp_file.name
         
     # Set the path to the Tesseract executable
-    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
     try:
         # Open the multi-page TIFF file
