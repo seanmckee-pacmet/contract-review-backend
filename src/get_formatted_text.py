@@ -5,8 +5,7 @@ from dotenv import load_dotenv
 from PIL import Image
 import pytesseract
 import traceback
-
-
+import fitz  # PyMuPDF
 
 load_dotenv()
 # new
@@ -19,6 +18,41 @@ parser = LlamaParse(
     vendor_multimodal_parser_model="gpt-4o-2024-08-06",
     vendor_multimodal_api_key=os.getenv("OPENAI_API_KEY"),
 )
+
+def get_plain_text_from_pdf(pdf_path):
+    if not os.path.exists(pdf_path):
+        raise FileNotFoundError(f"The file {pdf_path} does not exist.")
+    
+    try:
+        doc = fitz.open(pdf_path)
+        text = ""
+        for page in doc:
+            text += page.get_text()
+        doc.close()
+        return text
+    except Exception as e:
+        print(f"Error processing {pdf_path}: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        return ""
+
+def get_plain_text_from_tiff(tiff_path):
+    if not os.path.exists(tiff_path):
+        raise FileNotFoundError(f"The file {tiff_path} does not exist.")
+    
+    try:
+        full_text = ""
+        with Image.open(tiff_path) as img:
+            for i in range(img.n_frames):
+                img.seek(i)
+                text = pytesseract.image_to_string(img)
+                full_text += f"{text}\n\n"
+        return full_text
+    except Exception as e:
+        print(f"Error processing {tiff_path}: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        return ""
 
 def parse_pdf_to_markdown(pdf_path):
     if not os.path.exists(pdf_path):
@@ -88,3 +122,14 @@ def parse_document(doc_path):
 def get_formatted_text(file_path):
     response = parse_document(file_path)
     return response
+
+def get_plain_text(file_path):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"The file {file_path} does not exist.")
+    
+    if file_path.lower().endswith(".pdf"):
+        return get_plain_text_from_pdf(file_path)
+    elif file_path.lower().endswith((".tiff", ".tif")):
+        return get_plain_text_from_tiff(file_path)
+    else:
+        raise ValueError(f"Unsupported file type: {file_path}")

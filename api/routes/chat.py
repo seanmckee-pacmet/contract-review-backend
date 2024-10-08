@@ -9,6 +9,11 @@ supabase: Client = create_client(os.environ.get("SUPABASE_URL"), os.environ.get(
 
 router = APIRouter()
 
+@router.post("/test")
+async def test_endpoint(query: str, document_ids: str):
+    
+    return {"message": "Hello, World!"}
+
 # Your chat-related route definitions go here
 @router.post("/")
 async def chat_endpoint(query: str, document_ids: str):
