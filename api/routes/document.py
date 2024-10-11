@@ -1,13 +1,9 @@
 import os
-import shutil
 import tempfile
-import PyPDF2
 from supabase import create_client, Client
 from dotenv import load_dotenv
-import tiktoken
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import OpenAIEmbeddings
-import uuid
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
 
@@ -16,16 +12,14 @@ from src.po_analysis import review_po
 from src.embeddings import create_embeddings
 from src.document_processing import chunk_markdown_text, determine_document_type
 from src.get_formatted_text import parse_document, get_plain_text
-import asyncio
 import nest_asyncio
 from PIL import Image
 import pytesseract
 from langchain_core.pydantic_v1 import BaseModel, Field
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
-import json
 from openai import OpenAI
-
+from langchain_text_splitters import MarkdownHeaderTextSplitter
 router = APIRouter()
 load_dotenv()
 nest_asyncio.apply()
@@ -67,120 +61,175 @@ async def delete_document(document_id: str):
     # supabase.table("Chunks").delete().eq("document_id", document_id).execute()
     return {"message": "Document deleted successfully", "document_id": document_id}
 
-@router.post("/advanced-upload/{company_id}")
-async def advanced_upload(company_id: str, file: UploadFile = File(...)):
+# @router.post("/upload/{company_id}")
+# async def upload(company_id: str, file: UploadFile = File(...)):
+#     # Create a temporary file
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+#         content = await file.read()
+#         temp_file.write(content)
+#         temp_file_path = temp_file.name
 
-    class Header(BaseModel):
-        header: str = Field(description="The header or clause ID of the document")
-        description: str = Field(description="A brief description of the header or clause")
+#     try:
+#         # Get plain text
+#         plain_text = get_plain_text(temp_file_path)
+        
+#         # Get doc type
+#         doc_type = determine_document_type(plain_text[:2000])
+        
+#         # Insert document into Supabase
+#         document_result = supabase.table("Documents").insert({
+#             "company_id": company_id,
+#             "name": file.filename,
+#             "doc_type": doc_type
+#         }).execute()
+#         document_id = document_result.data[0]['id']
+
+#         if doc_type == "QD":
+#             print("Uploading QD")
+#             await qd_upload(plain_text, document_id, company_id, file.filename)
+#             print("Uploading general")
+#             await general_upload(plain_text, document_id, company_id, doc_type)
+#         elif doc_type == "TC":
+#             print("Uploading TC")
+#             await general_upload(plain_text, document_id, company_id, doc_type)
+#         elif doc_type == "PO":
+#             print("Uploading PO")
+#             po_analysis = review_po(plain_text)
+#             supabase.table("po_analysis").insert({
+#                 "doc_id": document_id,
+#                 "analysis": po_analysis.dict()
+#             }).execute()
+#             print("Uploading general")
+#             await general_upload(plain_text, document_id, company_id, doc_type)
+
+#         return {"message": "Document uploaded successfully", "document_id": document_id, "doc_type": doc_type}
+
+#     finally:
+#         # Clean up the temporary file
+#         os.unlink(temp_file_path)
+
+# async def general_upload(plain_text: str, document_id: str, company_id: str, doc_type: str):
+#     # llama parse to markdown
+#     #llama parse to markdown
+#     parser = LlamaParse(
+#         result_type="markdown"
+#     )
+
+#     # markdown_content = parse_document(plain_text)
+
+#     headers_to_split_on = [
+#         ("#", "Header 1"),
+#         ("##", "Header 2"),
+#         ("###", "Header 3"),
+#     ]
+
+#     markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+#     md_header_splits = markdown_splitter.split_text(markdown_content)
+
+#     # Define RecursiveCharacterTextSplitter
+#     chunk_size = 800
+#     chunk_overlap = 100
+#     text_splitter = RecursiveCharacterTextSplitter(
+#         chunk_size=chunk_size, 
+#         chunk_overlap=chunk_overlap
+
+#     )
+
+#     # Split the markdown header splits into smaller chunks
+#     chunks = text_splitter.split_documents(md_header_splits)
+
+#     print(f"Chunking completed. Total chunks: {len(chunks)}")
     
-    class Headers(BaseModel):
-        headers: list[Header]
-
-    # Create a temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
-        content = await file.read()
-        temp_file.write(content)
-        temp_file_path = temp_file.name
-
-    try:
-        # get plain text from file
-        plain_text = get_plain_text(temp_file_path)  # Pass the file path instead of file object
-        os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+#     # Create embeddings
+#     embedding_model = OpenAIEmbeddings()
+#     embeddings = embedding_model.embed_documents([chunk.page_content for chunk in chunks])
+    
+#     # Upsert chunks to supabase
+#     print("Upserting chunks")
+#     for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+#         if len(chunk.page_content.strip()) > 1:  # Only upload chunks with more than one character
+#             supabase.table("Chunks").upsert({
+#                 "document_id": document_id,
+#                 "content": chunk.page_content,
+#                 "embedding": embedding,
+#                 "header": chunk.metadata.get('header', doc_type)  # Use the header from metadata if available, otherwise use doc_type
+#             }).execute()
         
+#     print(f"Uploaded {len(chunks)} chunks")
+
+# # @router.post("/advanced-upload/{company_id}")
+# async def qd_upload(plain_text: str, document_id: str, company_id: str, file_name: str):
+
+#     class Header(BaseModel):
+#         header: str = Field(description="The header or clause ID of the document")
+#         description: str = Field(description="A summary of the text associated with this header including all important details, numbers, figures, percentages, and dates")
+    
+#     class Headers(BaseModel):
+#         headers: list[Header]
+
+
+#     try:
+#         # get plain text from file
+#         os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
         
-        model = ChatOpenAI(model="gpt-4o", temperature=0)  # Updated model name
-        structured_llm = model.with_structured_output(Headers)
-        prompt_template = ChatPromptTemplate.from_messages([
-            ("system", """You are an AI assistant specialized in analyzing legal documents. 
-            Your task is to identify clause headers/IDs first, then general titles/headers if they are not clauses from the given document text. 
-            These headers should be able to classify any text in the document.
+#         model = ChatOpenAI(model="gpt-4o", temperature=0)  # Updated model name
+#         structured_llm = model.with_structured_output(Headers)
+#         prompt_template = ChatPromptTemplate.from_messages([
+#             ("system", """You are an AI assistant specialized in analyzing legal documents. 
+#             Your task is to identify clause headers/IDs first, then general titles/headers if they are not clauses from the given document text. 
+#             These headers should be able to classify any text in the document.
+#              Clause headers/IDs preferably should include the code without description or additional text.
+#              For example: 1.1, 1.2, 1.3, etc. or A, B, C, etc. Or A1, A2, A3, etc.
+#              Not: 1: Scope of Work, 2: Terms and Conditions, etc.
             
-            For each header, provide a brief description of its purpose or content.
-             
-             Do not miss or skip any headers or clause IDs
-            
-            Return the results in a structured format with a list of headers, each containing a 'header' and 'description' field."""),
-            ("human", "Please analyze the following document text and extract the clause headers or IDs with descriptions. Return the results in the specified structured format.\n\nDocument text:\n{plain_text}")
-        ])
-        formatted_prompt = prompt_template.format_messages(plain_text=plain_text)
-        headers = structured_llm.invoke(formatted_prompt)
+#             For each header, provide summary of the text associated with this header including all important details, numbers, figures, percentages, weights, dimensions, dates, and anything like that.
+#              Include as much detail as possible that would be needed later.
 
-        doc_type = determine_document_type(plain_text[:2000])
+#             It is important that you include ALL headers and descriptions in the response.
+#              Do not ignore or skip any headers/clauses.
 
-        # using langchian and open ai batch processing, chunk document, then with a batch process with open ai, assign headers to each chunk
-        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200, separators=["\n\n"])
-        chunks = splitter.create_documents([plain_text])
-        
+#             Return the results in a structured format with a list of headers, each containing a 'header' and 'description' field."""),
+#             ("human", "Please analyze the following document text and extract the clause headers or IDs with descriptions. Return the results in the specified structured format.\n\nDocument text:\n{plain_text}. ")
+#         ])
+#         formatted_prompt = prompt_template.format_messages(plain_text=plain_text)
+#         headers = structured_llm.invoke(formatted_prompt)
+#         print(headers)
 
-        # Create OpenAI client
-        client = OpenAI()
-        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+#         # Create embeddings
+#         embeddings_model = OpenAIEmbeddings()
+#         embeddings = embeddings_model.embed_documents([header.header + ": " + header.description for header in headers.headers])
 
-        # Process chunks and assign headers
-        chunk_headers = []
-        for i, chunk in enumerate(chunks):
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": f"You are an AI assistant specialized in analyzing legal documents. Your task is to determine the most appropriate header for the given chunk of text based on the provided headers. Here are the available headers: {json.dumps([h.dict() for h in headers.headers])}"},
-                    {"role": "user", "content": f"Please analyze the following chunk of text and return only the name of the most appropriate header from the list provided:\n\n{chunk.page_content}"}
-                ],
-            )
-            assigned_header = response.choices[0].message.content.strip()
-            
-            # Create embedding for the chunk
-            embedding = embeddings.embed_query(chunk.page_content)
+#         #get doc type
+#         doc_type = determine_document_type(plain_text[:2000])
 
-            chunk_headers.append({
-                "chunk_id": f"chunk-{i}", 
-                "header": assigned_header,
-                "embedding": embedding
-            })
+#         # Upsert headers and embeddings to Supabase
+#         for header, embedding in zip(headers.headers, embeddings):
+#             supabase.table("Chunks").upsert({
+#                 "document_id": document_id,
+#                 "header": header.header,
+#                 "content": header.description,
+#                 "embedding": embedding
+#             }).execute()
 
-        # Insert document into Supabase
-        result = supabase.table("Documents").insert({
-            "company_id": company_id,
-            "name": file.filename,
-            "doc_type": doc_type
-        }).execute()
-        
-        document_id = result.data[0]['id']
-
-        # Insert chunks with assigned headers and embeddings into Supabase
-        for i, (chunk, header_info) in enumerate(zip(chunks, chunk_headers)):
-            supabase.table("Chunks").insert({
-                "document_id": document_id,
-                "content": chunk.page_content,
-                "header": header_info['header'],
-                "embedding": header_info['embedding']
-            }).execute()
-
-        return {
-            "message": "Advanced upload process completed",
-            "company_id": company_id,
-            "filename": file.filename,
-            "document_id": document_id,
-            "headers": headers.dict(),
-            "chunk_headers": chunk_headers
-        }
-
-    finally:
-        # Clean up the temporary file
-        os.unlink(temp_file_path)
-
+#         return {"message": "Document processed and stored successfully", "document_id": document_id}
+#     finally:
+#         pass
 # upload document
 # chunking, embedding, storing embeddings in supabase as well as the doc name, company_id, doctype, content, doc id
 # Chunks: id, document_id, content, embedding
 # Documents: id, doc_type, company_id, name
 @router.post("/upload/{company_id}")
 async def upload_document(company_id: str, file: UploadFile = File(...)):
+    print("Calling upload document")
     print(f"Starting upload process for file: {file.filename}")
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
         content = await file.read()
+        print("File read")
         temp_file.write(content)
+        print("File written to temp file")
         temp_file_path = temp_file.name
-    print(f"Temporary file created at: {temp_file_path}")
+        
+        print(f"Temporary file created at: {temp_file_path}")
 
     try:
         # Parse document to get markdown text
@@ -292,9 +341,3 @@ async def upload_purchase_order(document_id: str, file: UploadFile = File(...)):
         os.unlink(temp_file_path)
 
 # ... rest of the code ...
-
-
-
-
-
-

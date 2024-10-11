@@ -12,12 +12,7 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 @memoize
 def chunk_markdown_text(markdown_text):
     headers_to_split_on = [
-        ("#", "Header 1"),
-        ("##", "Header 2"),
-        ("###", "Header 3"),
-        ("####", "Header 4"),
-        ("#####", "Header 5"),
-        ("######", "Header 6")
+        ("#", "Header"),
     ]
     splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
     initial_chunks = splitter.split_text(markdown_text)
@@ -32,7 +27,7 @@ def chunk_markdown_text(markdown_text):
     final_chunks = []
     for chunk in initial_chunks:
         header = next((chunk.metadata[key] for key in chunk.metadata if key.startswith("Header")), "")
-        if len(chunk.page_content) > 1000:
+        if len(chunk.page_content) > 800:
             sub_chunks = sub_splitter.split_text(chunk.page_content)
             for sub_chunk in sub_chunks:
                 final_chunks.append({
@@ -70,10 +65,12 @@ def determine_document_type(content: str) -> str:
 
 def process_document(file_path):
     content = parse_document(file_path)
+    print("Content: ", content)
 
     doc_type = determine_document_type(content)
 
     chunks = chunk_markdown_text(content)
+
     
     # Extract just the file name without extension
     document_name = file_path.split('/')[-1].split('.')[0]
