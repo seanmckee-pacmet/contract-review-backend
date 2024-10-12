@@ -32,13 +32,13 @@ async def test_endpoint(query: str, document_ids: str):
          Before including any of the following ask yourself. Do I need this data to answer the question? and should this data be in a different category?
          clause IDs and documents do not go in phrases or keywords.
          Keywords:
-         - Extract up to 5 keywords from the user's query.
+         - Extract however many keywords are needed to fully express the main topic of the query.
          - Keywords should be short terms or variations of the main topic in the query.
          - keywords should reflect terms commonly found in aerospace contracts
          - Do not make keywords that will be very general, keywords should be specific words that will possibly return results that are relevant to the query.
          - do not mention clause ids or numbers in keywords.
          Phrases:
-         - Extract exactly 2 phrases from the user's query.
+         - Extract however many phrases are needed to fully express the main topic of the query.
          - Phrases should be longer, complete thoughts or sentences that rephrase the main topic of the query.
          - Phrases should reflect how aerospace contracts are written and would be found in a quality document or terms and conditions.
          - Phrases are statements not questions.
