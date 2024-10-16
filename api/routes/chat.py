@@ -196,6 +196,7 @@ async def test_endpoint(query: str, document_ids: str):
          "you may have to combine information from multiple chunks to answer the question."
          "you may have to infer information from the context to answer the question."
          "When possible, provide section numbers or clause ids in your answers."
+         "Information from purchase order always overrides information from quality documents or terms and conditions."
          "{context}"),
         ("human", "{query}")
     ])

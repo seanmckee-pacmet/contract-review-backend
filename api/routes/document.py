@@ -254,19 +254,24 @@ async def upload_document(company_id: str, file: UploadFile = File(...)):
         result = supabase.table("Documents").insert({
             "company_id": company_id,
             "name": file.filename,
-            "doc_type": doc_type
+            "doc_type": doc_type,
+             # Use the name without extension
         }).execute()
         
         document_id = result.data[0]['id']
         print(f"Document inserted with ID: {document_id}")
 
         print("Upserting chunks to Supabase")
+        document_name = os.path.splitext(file.filename)[0]  # Remove file extension
+
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             supabase.table("Chunks").upsert({
                 "document_id": document_id,
-                "content": chunk['metadata']['header'] + ": " + chunk['page_content'],
+                "content": chunk['page_content'],
                 "embedding": embedding,
-                "header": chunk['metadata']['header']
+                "header": chunk['metadata']['header'],
+                "document_type": doc_type,
+                "document_name": document_name
             }).execute()
             if i % 10 == 0:  # Print progress every 10 chunks
                 print(f"Upserted {i+1}/{len(chunks)} chunks")
